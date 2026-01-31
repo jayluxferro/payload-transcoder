@@ -47,4 +47,11 @@ public final class PayloadTranscoderDeser {
         return input != null && input.length >= 4
                 && (input[0] & 0xFF) == 0xAC && (input[1] & 0xFF) == 0xED;
     }
+
+    /** Check if input looks like .NET ViewState (contains __VIEWSTATE). */
+    public static boolean looksLikeViewState(byte[] input) {
+        if (input == null || input.length < 12) return false;
+        String s = new String(input, StandardCharsets.UTF_8);
+        return s.contains("__VIEWSTATE");
+    }
 }

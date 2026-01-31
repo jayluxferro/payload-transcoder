@@ -66,6 +66,11 @@ public class PayloadTranscoderTab extends JPanel {
             "Protobuf raw wire view",
             "Protobuf decode (field mapping)",
             "---",
+            "Form/query pretty-print",
+            "Form/query rebuild",
+            "Multipart pretty-print",
+            "WebSocket frame inspect",
+            "---",
             "Hex dump (view)",
             "Parse hex dump",
             "---",
@@ -92,6 +97,7 @@ public class PayloadTranscoderTab extends JPanel {
             "AWS SigV4 sign",
             "---",
             "Encode Base64",
+            "Encode Base64 URL-safe",
             "Encode Hex",
             "Encode URL",
             "Encode HTML entities",
@@ -103,6 +109,7 @@ public class PayloadTranscoderTab extends JPanel {
             "Encode MessagePack",
             "Encode CBOR",
             "Encode BSON",
+            "Encode gRPC frame",
             "---",
             "JSON pretty-print",
             "JSON minify",
@@ -141,7 +148,8 @@ public class PayloadTranscoderTab extends JPanel {
             "HMAC-SHA256 webhook (sha256=hex)",
             "Protobuf decode (field mapping)",
             "AWS SigV4 sign",
-            "Decode gRPC-Web (JSON with mapping)"
+            "Decode gRPC-Web (JSON with mapping)",
+            "Multipart pretty-print"
     );
 
     private static final String[] BATCH_OPERATIONS = Arrays.stream(OPERATIONS)
@@ -704,6 +712,19 @@ public class PayloadTranscoderTab extends JPanel {
             case "Decode gRPC-Web (JSON)" -> PayloadTranscoderGrpc.grpcWebDecodeJson(input);
             case "Protobuf raw wire view" -> PayloadTranscoderGrpc.protobufRawWireView(
                     PayloadTranscoderGrpc.extractGrpcMessage(input));
+            case "Form/query pretty-print" -> PayloadTranscoderStructured.formDataPrettyPrint(input);
+            case "Form/query rebuild" -> PayloadTranscoderStructured.formDataRebuild(input);
+            case "Multipart pretty-print" -> {
+                String boundary = PayloadTranscoderStructured.extractBoundaryFromRaw(input);
+                if (boundary == null || boundary.isEmpty()) {
+                    Object b = JOptionPane.showInputDialog(this, "Multipart boundary (from Content-Type):", "Multipart Boundary", JOptionPane.QUESTION_MESSAGE);
+                    boundary = b != null ? b.toString().trim() : null;
+                }
+                yield boundary != null && !boundary.isEmpty()
+                        ? PayloadTranscoderStructured.multipartPrettyPrint(input, boundary)
+                        : null;
+            }
+            case "WebSocket frame inspect" -> PayloadTranscoderProtocol.webSocketFramePrettyPrint(input);
             case "Hex dump (view)" -> PayloadTranscoderPadding.hexDump(input);
             case "Parse hex dump" -> PayloadTranscoderPadding.parseHexDump(input);
             case "GraphQL introspection pretty-print" -> PayloadTranscoderProtocol.graphqlIntrospectionPrettyPrint(input);
@@ -724,6 +745,7 @@ public class PayloadTranscoderTab extends JPanel {
             case "Detect Java serialized" -> PayloadTranscoderDeser.detectJavaSerialized(input);
             case "Detect .NET ViewState" -> PayloadTranscoderDeser.detectViewState(input);
             case "Encode Base64" -> toBytes(PayloadTranscoderUtils.encodeBase64(input));
+            case "Encode Base64 URL-safe" -> toBytes(PayloadTranscoderUtils.encodeBase64UrlSafe(input));
             case "Encode Hex" -> toBytes(PayloadTranscoderUtils.encodeHex(input));
             case "Encode URL" -> toBytes(PayloadTranscoderUtils.encodeUrlStrict(input));
             case "Encode HTML entities" -> toBytes(PayloadTranscoderUtils.encodeHtmlEntities(input));
@@ -735,6 +757,7 @@ public class PayloadTranscoderTab extends JPanel {
             case "Encode MessagePack" -> PayloadTranscoderBinary.encodeMessagePack(input);
             case "Encode CBOR" -> PayloadTranscoderBinary.encodeCbor(input);
             case "Encode BSON" -> PayloadTranscoderBinary.encodeBson(input);
+            case "Encode gRPC frame" -> PayloadTranscoderGrpc.buildGrpcFrame(input);
             case "JSON pretty-print" -> PayloadTranscoderStructured.jsonPrettyPrint(input);
             case "JSON minify" -> PayloadTranscoderStructured.jsonMinify(input);
             case "GraphQL pretty-print" -> PayloadTranscoderProtocol.graphqlPrettyPrint(input);

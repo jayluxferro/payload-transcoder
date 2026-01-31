@@ -22,6 +22,7 @@ public final class PayloadTranscoderIntruderProcessors {
         add(list, montoyaApi, "Unicode escapes decode", PayloadTranscoderUtils::decodeUnicodeEscapes);
         add(list, montoyaApi, "Quoted-printable decode", PayloadTranscoderUtils::decodeQuotedPrintable);
         add(list, montoyaApi, "Base64 encode", in -> toBytes(PayloadTranscoderUtils.encodeBase64(in)));
+        add(list, montoyaApi, "Base64 URL-safe encode", in -> toBytes(PayloadTranscoderUtils.encodeBase64UrlSafe(in)));
         add(list, montoyaApi, "Hex encode", in -> toBytes(PayloadTranscoderUtils.encodeHex(in)));
         add(list, montoyaApi, "URL encode", in -> toBytes(PayloadTranscoderUtils.encodeUrlStrict(in)));
         add(list, montoyaApi, "HTML entities encode", in -> toBytes(PayloadTranscoderUtils.encodeHtmlEntities(in)));
@@ -30,6 +31,7 @@ public final class PayloadTranscoderIntruderProcessors {
         add(list, montoyaApi, "deflate decode", PayloadTranscoderCompression::decodeDeflate);
         add(list, montoyaApi, "gzip encode", PayloadTranscoderCompression::encodeGzip);
         add(list, montoyaApi, "deflate encode", PayloadTranscoderCompression::encodeDeflate);
+        add(list, montoyaApi, "gRPC frame encode", PayloadTranscoderGrpc::buildGrpcFrame);
         add(list, montoyaApi, "JSON pretty-print", PayloadTranscoderStructured::jsonPrettyPrint);
         add(list, montoyaApi, "JSON minify", PayloadTranscoderStructured::jsonMinify);
         add(list, montoyaApi, "Normalize NFC", PayloadTranscoderUnicode::normalizeNfc);

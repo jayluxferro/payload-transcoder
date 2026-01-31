@@ -271,6 +271,18 @@ public final class PayloadTranscoderStructured {
         }
     }
 
+    /** Extract multipart boundary from raw body (first --XXXX line). */
+    public static String extractBoundaryFromRaw(byte[] raw) {
+        if (raw == null || raw.length < 4) return null;
+        int start = 0;
+        while (start < raw.length && (raw[start] == '\r' || raw[start] == '\n')) start++;
+        if (start + 4 > raw.length || raw[start] != '-' || raw[start + 1] != '-') return null;
+        int i = start + 2;
+        while (i < raw.length && raw[i] != '\r' && raw[i] != '\n') i++;
+        if (i == start + 2) return null;
+        return new String(raw, start + 2, i - start - 2, StandardCharsets.US_ASCII);
+    }
+
     public static String extractBoundaryFromContentType(String contentType) {
         if (contentType == null) return null;
         String lower = contentType.toLowerCase();

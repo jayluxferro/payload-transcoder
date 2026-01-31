@@ -66,7 +66,7 @@ A Burp Suite extension for transcoding HTTP and WebSocket payloads between forma
 ./gradlew jar
 ```
 
-The JAR is written to `build/libs/payload-transcoder.jar`.
+The JAR is written to `build/libs/payload-transcoder-<version>.jar` (e.g. `payload-transcoder-1.0.0.jar`). The version comes from `build.gradle.kts`.
 
 ## Testing
 
@@ -77,7 +77,7 @@ The JAR is written to `build/libs/payload-transcoder.jar`.
 ## Installation
 
 1. In Burp, go to **Extensions > Installed**.
-2. Click **Add** and select `payload-transcoder.jar`.
+2. Click **Add** and select `payload-transcoder-<version>.jar` from `build/libs/`.
 3. Click **Next** to load the extension.
 
 To reload after changes: hold **Ctrl** (Windows/Linux) or **⌘** (macOS) and click the **Loaded** checkbox.

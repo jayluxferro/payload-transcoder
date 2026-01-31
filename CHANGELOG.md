@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Version constant**: Extension logs version on load (e.g. "Payload Transcoder v1.0.0 loaded"); version sourced from `build.gradle.kts`
+- **Encode gRPC frame**: Tab, context menu Encode submenu, and Intruder processor for wrapping raw protobuf bytes in gRPC framing
+- **Context menu parity**: Homoglyph decode (Cyrillic→Latin), homoglyph encode (Latin→Cyrillic), Detect .NET ViewState, Base64 URL-safe encode, Copy as base64 URL-safe
+- **Tab operations**: Form/query pretty-print, Form/query rebuild, Multipart pretty-print, WebSocket frame inspect, Encode Base64 URL-safe
+- **Smart decode**: Suggests Form/query pretty-print, Multipart pretty-print, and WebSocket frame inspect when input matches those formats
+- **Intruder**: Base64 URL-safe encode processor
+
+### Changed
+- **Release workflow**: Uses version from Gradle (`printVersion` task) for JAR path and release name
+
 ## [1.0.0] - 2025-01-31
 
 ### Added
@@ -70,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Context menu: cheap pre-checks (`looksLike*`) before expensive decode operations
 
 #### Known limitations
-- Chain/batch: operations requiring user input (Sign JWT, HMAC, Protobuf mapping, gRPC-Web JSON with mapping, AWS SigV4) are filtered and cannot run in chain or batch mode
+- Chain/batch: operations requiring user input (Sign JWT, HMAC, Protobuf mapping, gRPC-Web JSON with mapping, AWS SigV4, Multipart pretty-print) are filtered and cannot run in chain or batch mode
 - Suggest "Apply first": shows message when first suggestion is a prompt-based operation
 
 ### Fixed
