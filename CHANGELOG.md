@@ -5,19 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-- **Version constant**: Extension logs version on load (e.g. "Payload Transcoder v1.0.0 loaded"); version sourced from `build.gradle.kts`
-- **Encode gRPC frame**: Tab, context menu Encode submenu, and Intruder processor for wrapping raw protobuf bytes in gRPC framing
-- **Context menu parity**: Homoglyph decode (Cyrillic→Latin), homoglyph encode (Latin→Cyrillic), Detect .NET ViewState, Base64 URL-safe encode, Copy as base64 URL-safe
-- **Tab operations**: Form/query pretty-print, Form/query rebuild, Multipart pretty-print, WebSocket frame inspect, Encode Base64 URL-safe
-- **Smart decode**: Suggests Form/query pretty-print, Multipart pretty-print, and WebSocket frame inspect when input matches those formats
-- **Intruder**: Base64 URL-safe encode processor
-
-### Changed
-- **Release workflow**: Uses version from Gradle (`printVersion` task) for JAR path and release name
-
 ## [1.0.0] - 2025-01-31
 
 ### Added
@@ -34,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Security & protocol support
 - **JWT**: Decode (pretty-print), alg:none attack, RS256→HS256 key confusion, extend expiry, crack wordlist, Sign HS256
-- **gRPC & Protobuf**: Frame parse, message extract, gRPC-Web decode (protobuf view, JSON, JSON with field mapping), Protobuf raw wire view, rebuild from clipboard
+- **gRPC & Protobuf**: Frame parse, message extract, gRPC-Web decode (protobuf view, JSON, JSON with field mapping), Protobuf raw wire view, rebuild from clipboard, Encode gRPC frame (Tab, context menu, Intruder)
 - **Protocol-specific**: GraphQL pretty-print, GraphQL introspection, XML pretty-print, WebSocket frame inspection
 - **Deserialization detection**: Java serialized (AC ED), .NET ViewState
 - **Homoglyph**: Encode (Latin→Cyrillic), Decode (Cyrillic→Latin) for WAF bypass
@@ -43,13 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AWS**: SigV4 request signing
 
 #### Tab features
+- Version constant logged on load (e.g. "Payload Transcoder v1.0.0 loaded"); version sourced from `build.gradle.kts`
 - Chain transcoding with export/import
-- Smart decode (auto-detect and apply decode/format)
+- Smart decode (auto-detect and apply decode/format); suggests Form/query, Multipart, WebSocket when input matches
 - Suggest button with "Apply first" option
 - Regex find/replace with capture groups; Extract by group
 - Payload templates (XSS, SQLi, SSTI, SSRF, NoSQL, CORS, HPP, etc.) grouped by category
 - OOB payload generator
 - Batch mode (one payload per line)
+- Form/query pretty-print, Form/query rebuild, Multipart pretty-print, WebSocket frame inspect in operation dropdown
 - Hex dump / parse
 - PKCS7 padding validate/strip/add
 - Load file / Save output
@@ -69,14 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebSocket replay: single dialog (Host, Port, Path)
 
 #### Intruder integration
-- Payload processors for Base64, Hex, URL, Unicode normalization, JWT alg:none, homoglyph, hash, and more
+- Payload processors for Base64, Base64 URL-safe, Hex, URL, Unicode normalization, JWT alg:none, homoglyph, gRPC frame encode, hash, and more
 
 #### Context menu
 - Send to Payload Transcoder (HTTP, WebSocket, Scanner issues)
 - Format submenu (context-aware: JSON, GraphQL, XML, gRPC, JWT, etc.)
-- Decode submenu (Base64, Hex, URL, gzip, MessagePack, etc.)
-- Encode submenu
-- Copy to clipboard
+- Decode submenu (Base64, Hex, URL, gzip, MessagePack, homoglyph, Detect .NET ViewState, etc.)
+- Encode submenu (Base64, Base64 URL-safe, Hex, gRPC frame, homoglyph, etc.)
+- Copy to clipboard (including base64 URL-safe)
 - Send to Decoder / Comparer
 
 #### Performance
@@ -85,6 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Known limitations
 - Chain/batch: operations requiring user input (Sign JWT, HMAC, Protobuf mapping, gRPC-Web JSON with mapping, AWS SigV4, Multipart pretty-print) are filtered and cannot run in chain or batch mode
 - Suggest "Apply first": shows message when first suggestion is a prompt-based operation
+
+### Changed
+- **Release workflow**: Uses version from Gradle (`printVersion` task) for JAR path and release name
 
 ### Fixed
 - `looksLikeBase64`: count base64 chars (excluding whitespace) for correct handling of content with trailing whitespace
