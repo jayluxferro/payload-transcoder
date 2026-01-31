@@ -69,6 +69,16 @@ class PayloadTranscoderJwtTest {
     }
 
     @Test
+    void jwtAlgNone() {
+        byte[] jwt = makeJwt(HEADER, PAYLOAD, SIGNATURE);
+        byte[] result = PayloadTranscoderJwt.jwtAlgNone(jwt);
+        assertNotNull(result);
+        String s = new String(result, StandardCharsets.UTF_8);
+        assertTrue(s.endsWith("."));
+        assertTrue(s.indexOf('.') > 0 && s.lastIndexOf('.') > s.indexOf('.'));
+    }
+
+    @Test
     void jwtRebuild_modifiedPayload() {
         byte[] jwt = makeJwt(HEADER, PAYLOAD, SIGNATURE);
         String modifiedPayload = "{\"sub\":\"modified\"}";

@@ -185,13 +185,28 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
     }
 
     private void replayWebSocket(byte[] payload) {
-        String host = (String) JOptionPane.showInputDialog(null, "Host:", "Replay WebSocket", JOptionPane.QUESTION_MESSAGE);
+        JPanel form = new JPanel();
+        form.setLayout(new GridLayout(3, 2, 5, 5));
+        JTextField hostField = new JTextField(20);
+        hostField.setText("localhost");
+        JTextField portField = new JTextField(6);
+        portField.setText("443");
+        JTextField pathField = new JTextField(20);
+        pathField.setText("/");
+        form.add(new JLabel("Host:"));
+        form.add(hostField);
+        form.add(new JLabel("Port:"));
+        form.add(portField);
+        form.add(new JLabel("Path:"));
+        form.add(pathField);
+        int result = JOptionPane.showConfirmDialog(null, form, "Replay WebSocket", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) return;
+        String host = hostField.getText();
         if (host == null || host.isBlank()) return;
-        String portStr = (String) JOptionPane.showInputDialog(null, "Port (80/443):", "Replay WebSocket", JOptionPane.QUESTION_MESSAGE, null, null, "443");
         int port = 443;
-        try { port = Integer.parseInt(portStr != null ? portStr : "443"); } catch (NumberFormatException ignored) {}
-        String path = (String) JOptionPane.showInputDialog(null, "Path:", "Replay WebSocket", JOptionPane.QUESTION_MESSAGE, null, null, "/");
-        if (path == null) path = "/";
+        try { port = Integer.parseInt(portField.getText().trim().isEmpty() ? "443" : portField.getText().trim()); } catch (NumberFormatException ignored) {}
+        String path = pathField.getText();
+        if (path == null || path.isBlank()) path = "/";
         try {
             var httpService = burp.api.montoya.http.HttpService.httpService(host, port, port == 443);
             var creation = montoyaApi.websockets().createWebSocket(httpService, path);
@@ -235,7 +250,7 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (PayloadTranscoderProtocol.looksLikeGraphqlIntrospection(body)) {
             byte[] pretty = PayloadTranscoderProtocol.graphqlIntrospectionPrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("GraphQL introspection pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("GraphQL introspection pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
@@ -244,7 +259,7 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (PayloadTranscoderProtocol.looksLikeGraphql(body)) {
             byte[] pretty = PayloadTranscoderProtocol.graphqlPrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("GraphQL pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("GraphQL pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
@@ -254,7 +269,7 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (PayloadTranscoderProtocol.looksLikeXml(body)) {
             byte[] pretty = PayloadTranscoderProtocol.xmlPrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("XML pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("XML pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
@@ -264,7 +279,7 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (PayloadTranscoderProtocol.looksLikeWebSocketFrame(body)) {
             byte[] pretty = PayloadTranscoderProtocol.webSocketFramePrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("WebSocket frame inspect → send to Decoder");
+                JMenuItem item = new JMenuItem("WebSocket frame inspect");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
@@ -274,14 +289,14 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (PayloadTranscoderStructured.looksLikeJson(body)) {
             byte[] pretty = PayloadTranscoderStructured.jsonPrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("JSON pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("JSON pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
             byte[] minified = PayloadTranscoderStructured.jsonMinify(body);
             if (minified != null) {
-                JMenuItem item = new JMenuItem("JSON minify → send to Decoder");
+                JMenuItem item = new JMenuItem("JSON minify");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(minified)));
                 formatMenu.add(item);
                 hasFormatItems = true;
@@ -291,14 +306,14 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (PayloadTranscoderStructured.looksLikeFormData(body)) {
             byte[] pretty = PayloadTranscoderStructured.formDataPrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("Form/query pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("Form/query pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
             byte[] rebuilt = PayloadTranscoderStructured.formDataRebuild(body);
             if (rebuilt != null) {
-                JMenuItem item = new JMenuItem("Form/query rebuild → send to Decoder");
+                JMenuItem item = new JMenuItem("Form/query rebuild");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(rebuilt)));
                 formatMenu.add(item);
                 hasFormatItems = true;
@@ -309,36 +324,50 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         if (boundary != null && PayloadTranscoderStructured.parseMultipart(body, boundary) != null) {
             byte[] pretty = PayloadTranscoderStructured.multipartPrettyPrint(body, boundary);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("Multipart pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("Multipart pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
         }
 
-        if (PayloadTranscoderGrpc.parseGrpcFrame(body) != null) {
+        if (PayloadTranscoderGrpc.looksLikeGrpcBytes(body)) {
+            byte[] grpcWebJson = PayloadTranscoderGrpc.grpcWebDecodeJson(body);
+            if (grpcWebJson != null) {
+                JMenuItem item = new JMenuItem("gRPC-Web decode (JSON)");
+                item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(grpcWebJson)));
+                formatMenu.add(item);
+                hasFormatItems = true;
+            }
+            byte[] grpcWebPretty = PayloadTranscoderGrpc.grpcWebDecodePretty(body);
+            if (grpcWebPretty != null) {
+                JMenuItem item = new JMenuItem("gRPC-Web decode (protobuf view)");
+                item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(grpcWebPretty)));
+                formatMenu.add(item);
+                hasFormatItems = true;
+            }
             byte[] pretty = PayloadTranscoderGrpc.grpcFramePrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("gRPC frame pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("gRPC frame pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
             byte[] message = PayloadTranscoderGrpc.extractGrpcMessage(body);
             if (message != null) {
-                JMenuItem item = new JMenuItem("gRPC message only → send to Decoder");
+                JMenuItem item = new JMenuItem("gRPC message only");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(message)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
             byte[] wireView = PayloadTranscoderGrpc.protobufRawWireView(PayloadTranscoderGrpc.extractGrpcMessage(body));
             if (wireView != null) {
-                JMenuItem item = new JMenuItem("Protobuf raw wire view → send to Decoder");
+                JMenuItem item = new JMenuItem("Protobuf raw wire view");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(wireView)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
-            JMenuItem rebuildGrpc = new JMenuItem("Rebuild gRPC with message from clipboard → send to Decoder");
+            JMenuItem rebuildGrpc = new JMenuItem("Rebuild gRPC (clipboard)");
             rebuildGrpc.addActionListener(e -> {
                 byte[] clipboardBytes = getClipboardBytes();
                 if (clipboardBytes != null && clipboardBytes.length > 0) {
@@ -353,21 +382,28 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         }
 
         if (PayloadTranscoderJwt.looksLikeJwt(body)) {
+            byte[] algNone = PayloadTranscoderJwt.jwtAlgNone(body);
+            if (algNone != null) {
+                JMenuItem item = new JMenuItem("JWT alg:none attack");
+                item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(algNone)));
+                formatMenu.add(item);
+                hasFormatItems = true;
+            }
             byte[] pretty = PayloadTranscoderJwt.jwtPrettyPrint(body);
             if (pretty != null) {
-                JMenuItem item = new JMenuItem("JWT pretty-print → send to Decoder");
+                JMenuItem item = new JMenuItem("JWT pretty-print");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(pretty)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
             byte[] payloadOnly = PayloadTranscoderJwt.jwtPayloadOnly(body);
             if (payloadOnly != null) {
-                JMenuItem item = new JMenuItem("JWT payload only → send to Decoder");
+                JMenuItem item = new JMenuItem("JWT payload only");
                 item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(payloadOnly)));
                 formatMenu.add(item);
                 hasFormatItems = true;
             }
-            JMenuItem rebuildJwt = new JMenuItem("Rebuild JWT with payload from clipboard → send to Decoder");
+            JMenuItem rebuildJwt = new JMenuItem("Rebuild JWT (clipboard)");
             rebuildJwt.addActionListener(e -> {
                 String clipboardPayload = getClipboardText();
                 if (clipboardPayload != null && !clipboardPayload.isEmpty()) {
@@ -386,210 +422,249 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
             menu.add(formatMenu);
         }
 
-        // Decode
-        byte[] decodedBase64 = PayloadTranscoderUtils.decodeBase64(body);
-        if (decodedBase64 != null && decodedBase64.length > 0) {
-            JMenuItem item = new JMenuItem("Decode base64 → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedBase64)));
-            menu.add(item);
-        }
+        // Decode submenu
+        JMenu decodeMenu = new JMenu("Decode");
+        boolean hasDecodeItems = false;
 
-        byte[] decodedBase64UrlSafe = PayloadTranscoderUtils.decodeBase64UrlSafe(body);
-        if (decodedBase64UrlSafe != null && decodedBase64UrlSafe.length > 0
-                && (decodedBase64 == null || !java.util.Arrays.equals(decodedBase64UrlSafe, decodedBase64))) {
-            JMenuItem item = new JMenuItem("Decode URL-safe base64 → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedBase64UrlSafe)));
-            menu.add(item);
+        byte[] decodedBase64 = null;
+        if (PayloadTranscoderUtils.looksLikeBase64(body)) {
+            decodedBase64 = PayloadTranscoderUtils.decodeBase64(body);
+            if (decodedBase64 != null && decodedBase64.length > 0) {
+                addDecodeItem(decodeMenu, "Base64", decodedBase64);
+                hasDecodeItems = true;
+            }
         }
-
-        byte[] decodedHex = PayloadTranscoderUtils.decodeHex(body);
-        if (decodedHex != null && decodedHex.length > 0) {
-            JMenuItem item = new JMenuItem("Decode hex → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedHex)));
-            menu.add(item);
+        if (PayloadTranscoderUtils.looksLikeBase64UrlSafe(body)) {
+            byte[] decodedBase64UrlSafe = PayloadTranscoderUtils.decodeBase64UrlSafe(body);
+            if (decodedBase64UrlSafe != null && decodedBase64UrlSafe.length > 0
+                    && (decodedBase64 == null || !java.util.Arrays.equals(decodedBase64UrlSafe, decodedBase64))) {
+                addDecodeItem(decodeMenu, "URL-safe base64", decodedBase64UrlSafe);
+                hasDecodeItems = true;
+            }
         }
-
-        byte[] decodedUrl = PayloadTranscoderUtils.decodeUrl(body);
-        if (decodedUrl != null && decodedUrl.length > 0) {
-            JMenuItem item = new JMenuItem("Decode URL → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedUrl)));
-            menu.add(item);
+        if (PayloadTranscoderUtils.looksLikeHex(body)) {
+            byte[] decodedHex = PayloadTranscoderUtils.decodeHex(body);
+            if (decodedHex != null && decodedHex.length > 0) {
+                addDecodeItem(decodeMenu, "Hex", decodedHex);
+                hasDecodeItems = true;
+            }
         }
-
-        byte[] decodedHtml = PayloadTranscoderUtils.decodeHtmlEntities(body);
-        if (decodedHtml != null && decodedHtml.length > 0) {
-            JMenuItem item = new JMenuItem("Decode HTML entities → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedHtml)));
-            menu.add(item);
+        if (PayloadTranscoderUtils.looksLikeUrlEncoded(body)) {
+            byte[] decodedUrl = PayloadTranscoderUtils.decodeUrl(body);
+            if (decodedUrl != null && decodedUrl.length > 0) {
+                addDecodeItem(decodeMenu, "URL", decodedUrl);
+                hasDecodeItems = true;
+            }
         }
-
-        byte[] decodedUnicode = PayloadTranscoderUtils.decodeUnicodeEscapes(body);
-        if (decodedUnicode != null && decodedUnicode.length > 0) {
-            JMenuItem item = new JMenuItem("Decode Unicode escapes → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedUnicode)));
-            menu.add(item);
+        if (PayloadTranscoderUtils.looksLikeHtmlEntities(body)) {
+            byte[] decodedHtml = PayloadTranscoderUtils.decodeHtmlEntities(body);
+            if (decodedHtml != null && decodedHtml.length > 0) {
+                addDecodeItem(decodeMenu, "HTML entities", decodedHtml);
+                hasDecodeItems = true;
+            }
         }
-
-        byte[] decodedQp = PayloadTranscoderUtils.decodeQuotedPrintable(body);
-        if (decodedQp != null && decodedQp.length > 0) {
-            JMenuItem item = new JMenuItem("Decode quoted-printable → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedQp)));
-            menu.add(item);
+        if (PayloadTranscoderUtils.looksLikeUnicodeEscapes(body)) {
+            byte[] decodedUnicode = PayloadTranscoderUtils.decodeUnicodeEscapes(body);
+            if (decodedUnicode != null && decodedUnicode.length > 0) {
+                addDecodeItem(decodeMenu, "Unicode escapes", decodedUnicode);
+                hasDecodeItems = true;
+            }
         }
-
-        byte[] decodedGzip = PayloadTranscoderCompression.decodeGzip(body);
-        if (decodedGzip != null && decodedGzip.length > 0) {
-            JMenuItem item = new JMenuItem("Decode gzip → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedGzip)));
-            menu.add(item);
+        if (PayloadTranscoderUtils.looksLikeQuotedPrintable(body)) {
+            byte[] decodedQp = PayloadTranscoderUtils.decodeQuotedPrintable(body);
+            if (decodedQp != null && decodedQp.length > 0) {
+                addDecodeItem(decodeMenu, "Quoted-printable", decodedQp);
+                hasDecodeItems = true;
+            }
         }
-
+        if (PayloadTranscoderCompression.looksLikeGzip(body)) {
+            byte[] decodedGzip = PayloadTranscoderCompression.decodeGzip(body);
+            if (decodedGzip != null && decodedGzip.length > 0) {
+                addDecodeItem(decodeMenu, "gzip", decodedGzip);
+                hasDecodeItems = true;
+            }
+        }
         if (PayloadTranscoderCompression.looksLikeDeflate(body)) {
             byte[] decodedDeflate = PayloadTranscoderCompression.decodeDeflate(body);
             if (decodedDeflate != null && decodedDeflate.length > 0) {
-                JMenuItem item = new JMenuItem("Decode deflate → send to Decoder");
-                item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedDeflate)));
-                menu.add(item);
+                addDecodeItem(decodeMenu, "deflate", decodedDeflate);
+                hasDecodeItems = true;
             }
         }
-
-        if (PayloadTranscoderCompression.isBrotliAvailable()) {
+        if (PayloadTranscoderCompression.isBrotliAvailable() && PayloadTranscoderCompression.looksLikeBrotli(body)) {
             byte[] decodedBrotli = PayloadTranscoderCompression.decodeBrotli(body);
             if (decodedBrotli != null && decodedBrotli.length > 0) {
-                JMenuItem item = new JMenuItem("Decode Brotli → send to Decoder");
-                item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedBrotli)));
-                menu.add(item);
+                addDecodeItem(decodeMenu, "Brotli", decodedBrotli);
+                hasDecodeItems = true;
+            }
+        }
+        if (PayloadTranscoderBinary.looksLikeMessagePack(body)) {
+            byte[] decodedMsgpack = PayloadTranscoderBinary.decodeMessagePack(body);
+            if (decodedMsgpack != null && decodedMsgpack.length > 0) {
+                addDecodeItem(decodeMenu, "MessagePack", decodedMsgpack);
+                hasDecodeItems = true;
+            }
+        }
+        if (PayloadTranscoderBinary.looksLikeCbor(body)) {
+            byte[] decodedCbor = PayloadTranscoderBinary.decodeCbor(body);
+            if (decodedCbor != null && decodedCbor.length > 0) {
+                addDecodeItem(decodeMenu, "CBOR", decodedCbor);
+                hasDecodeItems = true;
+            }
+        }
+        if (PayloadTranscoderBinary.looksLikeBson(body)) {
+            byte[] decodedBson = PayloadTranscoderBinary.decodeBson(body);
+            if (decodedBson != null && decodedBson.length > 0) {
+                addDecodeItem(decodeMenu, "BSON", decodedBson);
+                hasDecodeItems = true;
             }
         }
 
-        byte[] decodedMsgpack = PayloadTranscoderBinary.decodeMessagePack(body);
-        if (decodedMsgpack != null && decodedMsgpack.length > 0) {
-            JMenuItem item = new JMenuItem("Decode MessagePack → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedMsgpack)));
-            menu.add(item);
+        // Unicode normalization submenu
+        if (body != null && body.length > 0) {
+            JMenu unicodeMenu = new JMenu("Unicode normalization");
+            boolean hasUnicodeItems = false;
+            for (String norm : new String[]{"NFC", "NFD", "NFKC", "NFKD"}) {
+                byte[] normalized = "NFC".equals(norm) ? PayloadTranscoderUnicode.normalizeNfc(body)
+                        : "NFD".equals(norm) ? PayloadTranscoderUnicode.normalizeNfd(body)
+                        : "NFKC".equals(norm) ? PayloadTranscoderUnicode.normalizeNfkc(body)
+                        : PayloadTranscoderUnicode.normalizeNfkd(body);
+                if (normalized != null && !java.util.Arrays.equals(body, normalized)) {
+                    JMenuItem item = new JMenuItem("Normalize " + norm);
+                    byte[] n = normalized;
+                    item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(n)));
+                    unicodeMenu.add(item);
+                    hasUnicodeItems = true;
+                }
+            }
+            if (hasUnicodeItems) {
+                decodeMenu.addSeparator();
+                decodeMenu.add(unicodeMenu);
+                hasDecodeItems = true;
+            }
         }
 
-        byte[] decodedCbor = PayloadTranscoderBinary.decodeCbor(body);
-        if (decodedCbor != null && decodedCbor.length > 0) {
-            JMenuItem item = new JMenuItem("Decode CBOR → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedCbor)));
-            menu.add(item);
+        if (PayloadTranscoderDeser.looksLikeJavaSerialized(body)) {
+            byte[] detected = PayloadTranscoderDeser.detectJavaSerialized(body);
+            if (detected != null) {
+                addDecodeItem(decodeMenu, "Detect Java serialized", detected);
+                hasDecodeItems = true;
+            }
         }
 
-        byte[] decodedBson = PayloadTranscoderBinary.decodeBson(body);
-        if (decodedBson != null && decodedBson.length > 0) {
-            JMenuItem item = new JMenuItem("Decode BSON → send to Decoder");
-            item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(decodedBson)));
-            menu.add(item);
+        if (hasDecodeItems) {
+            montoyaApi.userInterface().applyThemeToComponent(decodeMenu);
+            menu.add(decodeMenu);
         }
 
-        if (menu.getItemCount() > 0) menu.addSeparator();
-
-        // Encode
-        JMenuItem encodeBase64 = new JMenuItem("Encode to base64 → send to Decoder");
+        // Encode submenu
+        JMenu encodeMenu = new JMenu("Encode");
+        JMenuItem encodeBase64 = new JMenuItem("Base64");
         encodeBase64.addActionListener(e -> {
             String encoded = PayloadTranscoderUtils.encodeBase64(body);
             montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         });
-        menu.add(encodeBase64);
+        encodeMenu.add(encodeBase64);
 
-        JMenuItem encodeHex = new JMenuItem("Encode to hex → send to Decoder");
+        JMenuItem encodeHex = new JMenuItem("Hex");
         encodeHex.addActionListener(e -> {
             String encoded = PayloadTranscoderUtils.encodeHex(body);
             montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         });
-        menu.add(encodeHex);
+        encodeMenu.add(encodeHex);
 
-        JMenuItem encodeUrl = new JMenuItem("Encode to URL → send to Decoder");
+        JMenuItem encodeUrl = new JMenuItem("URL");
         encodeUrl.addActionListener(e -> {
             String encoded = PayloadTranscoderUtils.encodeUrlStrict(body);
             montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         });
-        menu.add(encodeUrl);
+        encodeMenu.add(encodeUrl);
 
-        JMenuItem encodeHtml = new JMenuItem("Encode to HTML entities → send to Decoder");
+        JMenuItem encodeHtml = new JMenuItem("HTML entities");
         encodeHtml.addActionListener(e -> {
             String encoded = PayloadTranscoderUtils.encodeHtmlEntities(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             }
         });
-        menu.add(encodeHtml);
+        encodeMenu.add(encodeHtml);
 
-        JMenuItem encodeUnicode = new JMenuItem("Encode to Unicode escapes → send to Decoder");
+        JMenuItem encodeUnicode = new JMenuItem("Unicode escapes");
         encodeUnicode.addActionListener(e -> {
             String encoded = PayloadTranscoderUtils.encodeUnicodeEscapes(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             }
         });
-        menu.add(encodeUnicode);
+        encodeMenu.add(encodeUnicode);
 
-        JMenuItem encodeQp = new JMenuItem("Encode to quoted-printable → send to Decoder");
+        JMenuItem encodeQp = new JMenuItem("Quoted-printable");
         encodeQp.addActionListener(e -> {
             String encoded = PayloadTranscoderUtils.encodeQuotedPrintable(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             }
         });
-        menu.add(encodeQp);
+        encodeMenu.add(encodeQp);
 
-        JMenuItem encodeGzip = new JMenuItem("Encode to gzip → send to Decoder");
+        JMenuItem encodeGzip = new JMenuItem("gzip");
         encodeGzip.addActionListener(e -> {
             byte[] encoded = PayloadTranscoderCompression.encodeGzip(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
             }
         });
-        menu.add(encodeGzip);
+        encodeMenu.add(encodeGzip);
 
-        JMenuItem encodeDeflate = new JMenuItem("Encode to deflate → send to Decoder");
+        JMenuItem encodeDeflate = new JMenuItem("deflate");
         encodeDeflate.addActionListener(e -> {
             byte[] encoded = PayloadTranscoderCompression.encodeDeflate(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
             }
         });
-        menu.add(encodeDeflate);
+        encodeMenu.add(encodeDeflate);
 
         if (PayloadTranscoderCompression.isBrotliAvailable()) {
-            JMenuItem encodeBrotli = new JMenuItem("Encode to Brotli → send to Decoder");
+            JMenuItem encodeBrotli = new JMenuItem("Brotli");
             encodeBrotli.addActionListener(e -> {
                 byte[] encoded = PayloadTranscoderCompression.encodeBrotli(body);
                 if (encoded != null) {
                     montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
                 }
             });
-            menu.add(encodeBrotli);
+            encodeMenu.add(encodeBrotli);
         }
 
-        JMenuItem encodeMsgpack = new JMenuItem("Encode to MessagePack → send to Decoder");
+        JMenuItem encodeMsgpack = new JMenuItem("MessagePack");
         encodeMsgpack.addActionListener(e -> {
             byte[] encoded = PayloadTranscoderBinary.encodeMessagePack(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
             }
         });
-        menu.add(encodeMsgpack);
+        encodeMenu.add(encodeMsgpack);
 
-        JMenuItem encodeCbor = new JMenuItem("Encode to CBOR → send to Decoder");
+        JMenuItem encodeCbor = new JMenuItem("CBOR");
         encodeCbor.addActionListener(e -> {
             byte[] encoded = PayloadTranscoderBinary.encodeCbor(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
             }
         });
-        menu.add(encodeCbor);
+        encodeMenu.add(encodeCbor);
 
-        JMenuItem encodeBson = new JMenuItem("Encode to BSON → send to Decoder");
+        JMenuItem encodeBson = new JMenuItem("BSON");
         encodeBson.addActionListener(e -> {
             byte[] encoded = PayloadTranscoderBinary.encodeBson(body);
             if (encoded != null) {
                 montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
             }
         });
-        menu.add(encodeBson);
+        encodeMenu.add(encodeBson);
 
+        montoyaApi.userInterface().applyThemeToComponent(encodeMenu);
+        menu.add(encodeMenu);
         menu.addSeparator();
 
         // Copy to clipboard
@@ -623,6 +698,13 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         JMenuItem sendToComparer = new JMenuItem("Send to Comparer");
         sendToComparer.addActionListener(e -> montoyaApi.comparer().sendToComparer(ByteArray.byteArray(body)));
         menu.add(sendToComparer);
+    }
+
+    private void addDecodeItem(JMenu decodeMenu, String label, byte[] result) {
+        JMenuItem item = new JMenuItem(label);
+        byte[] r = result;
+        item.addActionListener(e -> montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(r)));
+        decodeMenu.add(item);
     }
 
     private void copyToClipboard(String text, String label) {

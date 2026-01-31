@@ -137,4 +137,93 @@ class PayloadTranscoderUtilsTest {
         byte[] decoded = PayloadTranscoderUtils.decodeQuotedPrintable("Hello=\r\nWorld".getBytes(StandardCharsets.US_ASCII));
         assertArrayEquals("HelloWorld".getBytes(StandardCharsets.UTF_8), decoded);
     }
+
+    // --- looksLike* helpers ---
+
+    @Test
+    void looksLikeBase64_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeBase64("YWJj".getBytes(StandardCharsets.US_ASCII)));
+        assertTrue(PayloadTranscoderUtils.looksLikeBase64("SGVsbG8gV29ybGQ=".getBytes(StandardCharsets.US_ASCII)));
+        assertTrue(PayloadTranscoderUtils.looksLikeBase64("YWJj \n".getBytes(StandardCharsets.US_ASCII))); // whitespace ok
+    }
+
+    @Test
+    void looksLikeBase64_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeBase64(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeBase64("ab".getBytes(StandardCharsets.US_ASCII)));
+        assertFalse(PayloadTranscoderUtils.looksLikeBase64("YWJ".getBytes(StandardCharsets.US_ASCII))); // length % 4 != 0
+        assertFalse(PayloadTranscoderUtils.looksLikeBase64("{}".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeBase64UrlSafe_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeBase64UrlSafe("YWJj".getBytes(StandardCharsets.US_ASCII)));
+        assertTrue(PayloadTranscoderUtils.looksLikeBase64UrlSafe("YWJjZA".getBytes(StandardCharsets.US_ASCII))); // no padding ok
+    }
+
+    @Test
+    void looksLikeBase64UrlSafe_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeBase64UrlSafe(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeBase64UrlSafe("ab".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeHex_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeHex("48656c6c6f".getBytes(StandardCharsets.US_ASCII)));
+        assertTrue(PayloadTranscoderUtils.looksLikeHex("48 65 6c 6c 6f".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeHex_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeHex(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeHex("1".getBytes(StandardCharsets.US_ASCII)));
+        assertFalse(PayloadTranscoderUtils.looksLikeHex("123".getBytes(StandardCharsets.US_ASCII))); // odd
+        assertFalse(PayloadTranscoderUtils.looksLikeHex("{}".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeUrlEncoded_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeUrlEncoded("hello%20world".getBytes(StandardCharsets.US_ASCII)));
+        assertTrue(PayloadTranscoderUtils.looksLikeUrlEncoded("%2Fpath".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeUrlEncoded_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeUrlEncoded(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeUrlEncoded("plain".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeHtmlEntities_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeHtmlEntities("&amp;".getBytes(StandardCharsets.US_ASCII)));
+        assertTrue(PayloadTranscoderUtils.looksLikeHtmlEntities("&lt;script&gt;".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeHtmlEntities_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeHtmlEntities(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeHtmlEntities("plain".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeUnicodeEscapes_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeUnicodeEscapes("\\u0048ello".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeUnicodeEscapes_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeUnicodeEscapes(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeUnicodeEscapes("plain".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeQuotedPrintable_valid() {
+        assertTrue(PayloadTranscoderUtils.looksLikeQuotedPrintable("Hello=0D=0A".getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Test
+    void looksLikeQuotedPrintable_invalid() {
+        assertFalse(PayloadTranscoderUtils.looksLikeQuotedPrintable(null));
+        assertFalse(PayloadTranscoderUtils.looksLikeQuotedPrintable("plain".getBytes(StandardCharsets.US_ASCII)));
+    }
 }

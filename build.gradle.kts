@@ -2,6 +2,8 @@ plugins {
     id("java")
 }
 
+version = "1.0.0"
+
 repositories {
     mavenCentral()
 }
@@ -22,10 +24,22 @@ tasks.named<Test>("test") {
     useJUnitPlatform()
 }
 
+tasks.named<ProcessResources>("processResources") {
+    filesMatching("version.properties") {
+        expand(mapOf("version" to project.version))
+    }
+}
+
 tasks.withType<JavaCompile>().configureEach {
     sourceCompatibility = "17"
     targetCompatibility = "17"
     options.encoding = "UTF-8"
+}
+
+tasks.register("printVersion") {
+    doLast {
+        println(project.version)
+    }
 }
 
 tasks.named<Jar>("jar") {

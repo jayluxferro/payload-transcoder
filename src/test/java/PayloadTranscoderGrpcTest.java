@@ -60,6 +60,16 @@ class PayloadTranscoderGrpcTest {
     }
 
     @Test
+    void grpcWebDecodeJson_simpleProtobuf() {
+        byte[] message = new byte[] { 0x08, 0x2A }; // field 1 = 42
+        byte[] frame = makeGrpcFrame(message);
+        byte[] json = PayloadTranscoderGrpc.grpcWebDecodeJson(frame);
+        assertNotNull(json);
+        String s = new String(json, StandardCharsets.UTF_8);
+        assertTrue(s.contains("1") || s.contains("42"));
+    }
+
+    @Test
     void protobufRawWireView_simpleMessage() {
         // Protobuf: field 1 (varint) = 42
         // Tag: (1 << 3) | 0 = 8, value: 42 (varint)

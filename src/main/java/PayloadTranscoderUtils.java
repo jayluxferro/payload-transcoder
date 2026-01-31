@@ -33,6 +33,93 @@ public final class PayloadTranscoderUtils {
 
     // --- Base64 ---
 
+    /** Cheap pre-check before decode (avoids expensive decode on non-base64 content).
+     * Counts base64 chars (excluding whitespace) and requires count % 4 == 0 to handle
+     * standard base64 with padding and content with trailing whitespace. */
+    public static boolean looksLikeBase64(byte[] raw) {
+        if (raw == null || raw.length < 4) return false;
+        int len = Math.min(raw.length, 256);
+        int b64Count = 0;
+        for (int i = 0; i < len; i++) {
+            int c = raw[i] & 0xff;
+            if (c == '\n' || c == '\r' || c == ' ') continue;
+            if (c == '+' || c == '/' || c == '=' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+                b64Count++;
+                continue;
+            }
+            return false;
+        }
+        return b64Count >= 4 && b64Count % 4 == 0;
+    }
+
+    /** Cheap pre-check for URL-safe base64. */
+    public static boolean looksLikeBase64UrlSafe(byte[] raw) {
+        if (raw == null || raw.length < 4) return false;
+        int len = Math.min(raw.length, 256);
+        for (int i = 0; i < len; i++) {
+            int c = raw[i] & 0xff;
+            if (c != '-' && c != '_' && !(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9'))
+                return false;
+        }
+        return true;
+    }
+
+    /** Cheap pre-check for hex (0-9a-fA-F, even length). */
+    public static boolean looksLikeHex(byte[] raw) {
+        if (raw == null || raw.length < 2) return false;
+        int len = Math.min(raw.length, 256);
+        int hexCount = 0;
+        for (int i = 0; i < len; i++) {
+            int c = raw[i] & 0xff;
+            if (c == ' ' || c == '\n' || c == '\r') continue;
+            if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) hexCount++;
+            else return false;
+        }
+        return hexCount >= 2 && hexCount % 2 == 0;
+    }
+
+    /** Cheap pre-check for URL encoding (%XX). */
+    public static boolean looksLikeUrlEncoded(byte[] raw) {
+        if (raw == null || raw.length < 3) return false;
+        for (int i = 0; i < Math.min(raw.length, 512); i++) {
+            if (raw[i] == '%' && i + 2 < raw.length) {
+                int h1 = raw[i + 1] & 0xff, h2 = raw[i + 2] & 0xff;
+                if ((h1 >= '0' && h1 <= '9' || h1 >= 'a' && h1 <= 'f' || h1 >= 'A' && h1 <= 'F')
+                        && (h2 >= '0' && h2 <= '9' || h2 >= 'a' && h2 <= 'f' || h2 >= 'A' && h2 <= 'F'))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /** Cheap pre-check for HTML entities (&...;). */
+    public static boolean looksLikeHtmlEntities(byte[] raw) {
+        if (raw == null || raw.length < 4) return false;
+        boolean hasAmp = false, hasSemi = false;
+        for (int i = 0; i < Math.min(raw.length, 256); i++) {
+            if (raw[i] == '&') hasAmp = true;
+            if (raw[i] == ';') hasSemi = true;
+            if (hasAmp && hasSemi) return true;
+        }
+        return false;
+    }
+
+    /** Cheap pre-check for Unicode escapes (\\uXXXX). */
+    public static boolean looksLikeUnicodeEscapes(byte[] raw) {
+        if (raw == null || raw.length < 6) return false;
+        String s = new String(raw, 0, Math.min(raw.length, 512), StandardCharsets.UTF_8);
+        return s.contains("\\u") && s.matches(".*\\\\u[0-9a-fA-F]{4}.*");
+    }
+
+    /** Cheap pre-check for quoted-printable (=XX at line end). */
+    public static boolean looksLikeQuotedPrintable(byte[] raw) {
+        if (raw == null || raw.length < 3) return false;
+        for (int i = 0; i < Math.min(raw.length, 256); i++) {
+            if (raw[i] == '=' && i + 2 < raw.length) return true;
+        }
+        return false;
+    }
+
     public static byte[] decodeBase64(byte[] raw) {
         if (raw == null || raw.length < 4) return null;
         try {

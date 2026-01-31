@@ -32,6 +32,13 @@ public final class PayloadTranscoderIntruderProcessors {
         add(list, montoyaApi, "deflate encode", PayloadTranscoderCompression::encodeDeflate);
         add(list, montoyaApi, "JSON pretty-print", PayloadTranscoderStructured::jsonPrettyPrint);
         add(list, montoyaApi, "JSON minify", PayloadTranscoderStructured::jsonMinify);
+        add(list, montoyaApi, "Normalize NFC", PayloadTranscoderUnicode::normalizeNfc);
+        add(list, montoyaApi, "Normalize NFD", PayloadTranscoderUnicode::normalizeNfd);
+        add(list, montoyaApi, "Normalize NFKC", PayloadTranscoderUnicode::normalizeNfkc);
+        add(list, montoyaApi, "Normalize NFKD", PayloadTranscoderUnicode::normalizeNfkd);
+        add(list, montoyaApi, "JWT alg:none attack", PayloadTranscoderJwt::jwtAlgNone);
+        add(list, montoyaApi, "Encode homoglyph", PayloadTranscoderHomoglyph::encodeHomoglyph);
+        add(list, montoyaApi, "Decode homoglyph", PayloadTranscoderHomoglyph::decodeHomoglyph);
         add(list, montoyaApi, "Hash MD5", PayloadTranscoderHash::md5);
         add(list, montoyaApi, "Hash SHA-256", PayloadTranscoderHash::sha256);
         return list;
