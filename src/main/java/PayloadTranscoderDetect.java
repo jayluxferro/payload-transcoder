@@ -35,6 +35,15 @@ public final class PayloadTranscoderDetect {
         if (PayloadTranscoderGrpc.looksLikeGrpcBytes(input)) {
             return new Suggestion("Decode gRPC-Web (JSON)", "Looks like gRPC/gRPC-Web framing");
         }
+        if (PayloadTranscoderProtocol.looksLikeWebSocketFrame(input)) {
+            return new Suggestion("WebSocket frame inspect", "Looks like WebSocket frame");
+        }
+        if (PayloadTranscoderStructured.extractBoundaryFromRaw(input) != null) {
+            return new Suggestion("Multipart pretty-print", "Looks like multipart form-data");
+        }
+        if (PayloadTranscoderStructured.looksLikeFormData(input)) {
+            return new Suggestion("Form/query pretty-print", "Looks like form/query data");
+        }
 
         int sampleLen = Math.min(input.length, DETECT_SAMPLE_LIMIT);
         String s = new String(input, 0, sampleLen, StandardCharsets.UTF_8).trim();
@@ -112,6 +121,15 @@ public final class PayloadTranscoderDetect {
         if (PayloadTranscoderProtocol.looksLikeGraphqlIntrospection(input)) {
             return new Suggestion("GraphQL introspection pretty-print", "Looks like GraphQL introspection");
         }
+        if (PayloadTranscoderStructured.looksLikeFormData(input)) {
+            return new Suggestion("Form/query pretty-print", "Looks like form/query data");
+        }
+        if (PayloadTranscoderStructured.extractBoundaryFromRaw(input) != null) {
+            return new Suggestion("Multipart pretty-print", "Looks like multipart form-data");
+        }
+        if (PayloadTranscoderProtocol.looksLikeWebSocketFrame(input)) {
+            return new Suggestion("WebSocket frame inspect", "Looks like WebSocket frame");
+        }
         return null;
     }
 
@@ -177,6 +195,21 @@ public final class PayloadTranscoderDetect {
         // XML
         if (s.trim().startsWith("<") && s.contains(">")) {
             out.add(new Suggestion("XML pretty-print", "Looks like XML"));
+        }
+
+        // Form/query
+        if (PayloadTranscoderStructured.looksLikeFormData(input)) {
+            out.add(new Suggestion("Form/query pretty-print", "Looks like form/query data"));
+        }
+
+        // Multipart
+        if (PayloadTranscoderStructured.extractBoundaryFromRaw(input) != null) {
+            out.add(new Suggestion("Multipart pretty-print", "Looks like multipart form-data"));
+        }
+
+        // WebSocket frame
+        if (PayloadTranscoderProtocol.looksLikeWebSocketFrame(input)) {
+            out.add(new Suggestion("WebSocket frame inspect", "Looks like WebSocket frame"));
         }
 
         // Unicode normalization - suggest when text has non-ASCII (potential bypass testing)

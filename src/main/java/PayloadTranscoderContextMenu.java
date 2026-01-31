@@ -551,6 +551,18 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
                 hasDecodeItems = true;
             }
         }
+        if (PayloadTranscoderDeser.looksLikeViewState(body)) {
+            byte[] detected = PayloadTranscoderDeser.detectViewState(body);
+            if (detected != null) {
+                addDecodeItem(decodeMenu, "Detect .NET ViewState", detected);
+                hasDecodeItems = true;
+            }
+        }
+        byte[] decodedHomoglyph = PayloadTranscoderHomoglyph.decodeHomoglyph(body);
+        if (decodedHomoglyph != null && !java.util.Arrays.equals(body, decodedHomoglyph)) {
+            addDecodeItem(decodeMenu, "Homoglyph (Cyrillic→Latin)", decodedHomoglyph);
+            hasDecodeItems = true;
+        }
 
         if (hasDecodeItems) {
             montoyaApi.userInterface().applyThemeToComponent(decodeMenu);
@@ -565,6 +577,14 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
             montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         });
         encodeMenu.add(encodeBase64);
+        JMenuItem encodeBase64UrlSafe = new JMenuItem("Base64 URL-safe");
+        encodeBase64UrlSafe.addActionListener(e -> {
+            String encoded = PayloadTranscoderUtils.encodeBase64UrlSafe(body);
+            if (encoded != null) {
+                montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            }
+        });
+        encodeMenu.add(encodeBase64UrlSafe);
 
         JMenuItem encodeHex = new JMenuItem("Hex");
         encodeHex.addActionListener(e -> {
@@ -663,6 +683,24 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         });
         encodeMenu.add(encodeBson);
 
+        JMenuItem encodeGrpcFrame = new JMenuItem("gRPC frame");
+        encodeGrpcFrame.addActionListener(e -> {
+            byte[] encoded = PayloadTranscoderGrpc.buildGrpcFrame(body);
+            if (encoded != null) {
+                montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
+            }
+        });
+        encodeMenu.add(encodeGrpcFrame);
+
+        JMenuItem encodeHomoglyph = new JMenuItem("Homoglyph (Latin→Cyrillic)");
+        encodeHomoglyph.addActionListener(e -> {
+            byte[] encoded = PayloadTranscoderHomoglyph.encodeHomoglyph(body);
+            if (encoded != null) {
+                montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
+            }
+        });
+        encodeMenu.add(encodeHomoglyph);
+
         montoyaApi.userInterface().applyThemeToComponent(encodeMenu);
         menu.add(encodeMenu);
         menu.addSeparator();
@@ -670,6 +708,8 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         // Copy to clipboard
         JMenu copyMenu = new JMenu("Copy to clipboard");
         JMenuItem copyBase64 = new JMenuItem("Copy as base64");
+        JMenuItem copyBase64UrlSafe = new JMenuItem("Copy as base64 URL-safe");
+        copyBase64UrlSafe.addActionListener(e -> copyToClipboard(PayloadTranscoderUtils.encodeBase64UrlSafe(body), "base64 URL-safe"));
         copyBase64.addActionListener(e -> copyToClipboard(PayloadTranscoderUtils.encodeBase64(body), "base64"));
         JMenuItem copyHex = new JMenuItem("Copy as hex");
         copyHex.addActionListener(e -> copyToClipboard(PayloadTranscoderUtils.encodeHex(body), "hex"));
@@ -682,6 +722,7 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
         JMenuItem copyQuotedPrintable = new JMenuItem("Copy as quoted-printable");
         copyQuotedPrintable.addActionListener(e -> copyToClipboard(PayloadTranscoderUtils.encodeQuotedPrintable(body), "quoted-printable"));
         copyMenu.add(copyBase64);
+        copyMenu.add(copyBase64UrlSafe);
         copyMenu.add(copyHex);
         copyMenu.add(copyUrlEncoded);
         copyMenu.add(copyHtmlEntities);
