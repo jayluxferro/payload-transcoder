@@ -96,6 +96,14 @@ public final class PayloadTranscoderDetect {
             return new Suggestion("XML pretty-print", "Looks like XML");
         }
 
+        // Raw protobuf (application/proto) - no gRPC framing; try parse as protobuf
+        if (input.length >= 4 && input.length <= DETECT_SAMPLE_LIMIT) {
+            byte[] wireView = PayloadTranscoderGrpc.protobufRawWireView(input);
+            if (wireView != null) {
+                return new Suggestion("Protobuf raw wire view", "Looks like raw protobuf (application/proto)");
+            }
+        }
+
         return null;
     }
 

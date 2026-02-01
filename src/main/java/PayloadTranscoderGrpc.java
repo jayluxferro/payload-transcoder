@@ -1,8 +1,11 @@
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.protobuf.CodedInputStream;
+import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.WireFormat;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -10,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +41,13 @@ public final class PayloadTranscoderGrpc {
         if (contentType == null) return false;
         String lower = contentType.toLowerCase();
         return lower.contains("application/grpc");
+    }
+
+    /** Check if Content-Type indicates raw protobuf (application/proto, application/x-protobuf). */
+    public static boolean looksLikeProtoContentType(String contentType) {
+        if (contentType == null) return false;
+        String lower = contentType.toLowerCase();
+        return lower.contains("application/proto") || lower.contains("application/x-protobuf");
     }
 
     /** Check if raw bytes look like gRPC/gRPC-Web framing (5-byte header: flag + 4-byte length). */
@@ -337,11 +348,18 @@ public final class PayloadTranscoderGrpc {
         };
     }
 
+    /** Get protobuf message: from gRPC frame if present, otherwise treat raw body as protobuf (application/proto). */
+    public static byte[] getProtobufMessage(byte[] raw) {
+        if (raw == null || raw.length == 0) return null;
+        byte[] extracted = extractGrpcMessage(raw);
+        return extracted != null ? extracted : raw;
+    }
+
     /**
-     * Decode gRPC-Web/gRPC to human-readable protobuf wire view. Extracts first data frame and parses.
+     * Decode gRPC-Web/gRPC or raw protobuf (application/proto) to human-readable protobuf wire view.
      */
     public static byte[] grpcWebDecodePretty(byte[] raw) {
-        byte[] message = extractGrpcMessage(raw);
+        byte[] message = getProtobufMessage(raw);
         if (message == null || message.length == 0) return null;
         byte[] view = protobufRawWireView(message);
         if (view != null) return view;
@@ -352,11 +370,11 @@ public final class PayloadTranscoderGrpc {
     }
 
     /**
-     * Decode gRPC-Web/gRPC to JSON. Repeated fields become arrays, nested messages become objects.
+     * Decode gRPC-Web/gRPC or raw protobuf (application/proto) to JSON.
      * @param mappingStr optional "3=version,6001=metadata,6001.1=build_id" for field names from .proto
      */
     public static byte[] grpcWebDecodeJson(byte[] raw, String mappingStr) {
-        byte[] message = extractGrpcMessage(raw);
+        byte[] message = getProtobufMessage(raw);
         if (message == null || message.length == 0) return null;
         byte[] json = protobufToJson(message, mappingStr);
         if (json != null) return json;
@@ -365,6 +383,84 @@ public final class PayloadTranscoderGrpc {
 
     public static byte[] grpcWebDecodeJson(byte[] raw) {
         return grpcWebDecodeJson(raw, null);
+    }
+
+    /**
+     * Encode JSON to protobuf binary. JSON keys must be field numbers (e.g. "1", "2", "1.1").
+     * Supports: numbers (VARINT), strings (LENGTH_DELIMITED), objects (nested message), arrays (repeated).
+     */
+    public static byte[] jsonToProtobuf(byte[] json) {
+        if (json == null || json.length == 0) return null;
+        try {
+            JsonNode root = JSON_MAPPER.readTree(json);
+            if (root == null || !root.isObject()) return null;
+            ByteArrayOutputStream bout = new ByteArrayOutputStream();
+            CodedOutputStream out = CodedOutputStream.newInstance(bout);
+            writeJsonToProtobuf(out, root);
+            out.flush();
+            return bout.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void writeJsonToProtobuf(CodedOutputStream out, JsonNode node) throws IOException {
+        if (node == null || !node.isObject()) return;
+        Iterator<Map.Entry<String, JsonNode>> it = node.fields();
+        while (it.hasNext()) {
+            Map.Entry<String, JsonNode> e = it.next();
+            int fieldNum;
+            try {
+                fieldNum = Integer.parseInt(e.getKey().trim());
+            } catch (NumberFormatException ex) {
+                continue;
+            }
+            JsonNode val = e.getValue();
+            if (val.isArray()) {
+                for (JsonNode elem : val) {
+                    writeField(out, fieldNum, elem);
+                }
+            } else {
+                writeField(out, fieldNum, val);
+            }
+        }
+    }
+
+    private static void writeField(CodedOutputStream out, int fieldNum, JsonNode val) throws IOException {
+        if (val.isNumber()) {
+            if (val.isIntegralNumber()) {
+                out.writeTag(fieldNum, WireFormat.WIRETYPE_VARINT);
+                out.writeUInt64NoTag(val.asLong());
+            } else {
+                out.writeTag(fieldNum, WireFormat.WIRETYPE_FIXED64);
+                out.writeFixed64NoTag(Double.doubleToLongBits(val.asDouble()));
+            }
+        } else if (val.isTextual()) {
+            byte[] bytes = val.asText().getBytes(StandardCharsets.UTF_8);
+            out.writeTag(fieldNum, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+            out.writeByteArrayNoTag(bytes);
+        } else if (val.isObject()) {
+            ByteArrayOutputStream bout = new ByteArrayOutputStream();
+            CodedOutputStream nested = CodedOutputStream.newInstance(bout);
+            writeJsonToProtobuf(nested, val);
+            nested.flush();
+            byte[] nestedBytes = bout.toByteArray();
+            out.writeTag(fieldNum, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+            out.writeByteArrayNoTag(nestedBytes);
+        } else if (val.isBoolean()) {
+            out.writeTag(fieldNum, WireFormat.WIRETYPE_VARINT);
+            out.writeBoolNoTag(val.asBoolean());
+        } else if (val.isBinary()) {
+            try {
+                byte[] bytes = val.binaryValue();
+                out.writeTag(fieldNum, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+                out.writeByteArrayNoTag(bytes);
+            } catch (IOException ex) {
+                byte[] bytes = Base64.getDecoder().decode(val.asText());
+                out.writeTag(fieldNum, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+                out.writeByteArrayNoTag(bytes);
+            }
+        }
     }
 
     private static String bytesToHex(byte[] bytes) {

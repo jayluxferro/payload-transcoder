@@ -331,6 +331,33 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
             }
         }
 
+        if (PayloadTranscoderGrpc.looksLikeProtoContentType(contentType) && !PayloadTranscoderGrpc.looksLikeGrpcBytes(body)) {
+            JMenuItem wireViewItem = new JMenuItem("Protobuf raw wire view");
+            wireViewItem.addActionListener(e -> {
+                byte[] wireView = PayloadTranscoderGrpc.protobufRawWireView(body);
+                if (wireView != null) montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(wireView));
+            });
+            formatMenu.add(wireViewItem);
+            hasFormatItems = true;
+            JMenuItem jsonItem = new JMenuItem("Protobuf decode (JSON)");
+            jsonItem.addActionListener(e -> {
+                byte[] json = PayloadTranscoderGrpc.grpcWebDecodeJson(body);
+                if (json != null) montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(json));
+            });
+            formatMenu.add(jsonItem);
+            hasFormatItems = true;
+            JMenuItem mappingItem = new JMenuItem("Protobuf decode (field mapping)");
+            mappingItem.addActionListener(e -> {
+                String mapping = JOptionPane.showInputDialog(null, "Field mapping (e.g. 1=name,2=id):", "Protobuf Field Mapping", JOptionPane.QUESTION_MESSAGE);
+                if (mapping != null) {
+                    byte[] result = PayloadTranscoderGrpc.protobufDecodeWithMapping(body, mapping);
+                    if (result != null) montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(result));
+                }
+            });
+            formatMenu.add(mappingItem);
+            hasFormatItems = true;
+        }
+
         if (PayloadTranscoderGrpc.looksLikeGrpcBytes(body)) {
             byte[] grpcWebJson = PayloadTranscoderGrpc.grpcWebDecodeJson(body);
             if (grpcWebJson != null) {
@@ -691,6 +718,27 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
             }
         });
         encodeMenu.add(encodeGrpcFrame);
+
+        JMenuItem encodeProtobufFromJson = new JMenuItem("Protobuf from JSON");
+        encodeProtobufFromJson.addActionListener(e -> {
+            byte[] encoded = PayloadTranscoderGrpc.jsonToProtobuf(body);
+            if (encoded != null) {
+                montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
+            }
+        });
+        encodeMenu.add(encodeProtobufFromJson);
+
+        JMenuItem encodeGrpcFromJson = new JMenuItem("gRPC-Web from JSON");
+        encodeGrpcFromJson.addActionListener(e -> {
+            byte[] protobuf = PayloadTranscoderGrpc.jsonToProtobuf(body);
+            if (protobuf != null) {
+                byte[] framed = PayloadTranscoderGrpc.buildGrpcFrame(protobuf);
+                if (framed != null) {
+                    montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(framed));
+                }
+            }
+        });
+        encodeMenu.add(encodeGrpcFromJson);
 
         JMenuItem encodeHomoglyph = new JMenuItem("Homoglyph (Latin→Cyrillic)");
         encodeHomoglyph.addActionListener(e -> {

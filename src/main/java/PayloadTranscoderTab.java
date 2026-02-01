@@ -110,6 +110,8 @@ public class PayloadTranscoderTab extends JPanel {
             "Encode CBOR",
             "Encode BSON",
             "Encode gRPC frame",
+            "Encode protobuf from JSON",
+            "Encode gRPC-Web from JSON",
             "---",
             "JSON pretty-print",
             "JSON minify",
@@ -650,8 +652,8 @@ public class PayloadTranscoderTab extends JPanel {
         } else if ("Protobuf decode (field mapping)".equals(op)) {
             String mapping = JOptionPane.showInputDialog(this, "Field mapping (e.g. 1=name,2=id):", "Protobuf Field Mapping", JOptionPane.QUESTION_MESSAGE);
             if (mapping == null) return;
-            byte[] msg = PayloadTranscoderGrpc.extractGrpcMessage(input);
-            result = PayloadTranscoderGrpc.protobufDecodeWithMapping(msg != null ? msg : input, mapping);
+            byte[] msg = PayloadTranscoderGrpc.getProtobufMessage(input);
+            result = PayloadTranscoderGrpc.protobufDecodeWithMapping(msg, mapping);
         } else if ("AWS SigV4 sign".equals(op)) {
             String accessKey = JOptionPane.showInputDialog(this, "AWS Access Key:", "AWS SigV4", JOptionPane.QUESTION_MESSAGE);
             if (accessKey == null) return;
@@ -711,7 +713,7 @@ public class PayloadTranscoderTab extends JPanel {
             case "Decode gRPC-Web (protobuf view)" -> PayloadTranscoderGrpc.grpcWebDecodePretty(input);
             case "Decode gRPC-Web (JSON)" -> PayloadTranscoderGrpc.grpcWebDecodeJson(input);
             case "Protobuf raw wire view" -> PayloadTranscoderGrpc.protobufRawWireView(
-                    PayloadTranscoderGrpc.extractGrpcMessage(input));
+                    PayloadTranscoderGrpc.getProtobufMessage(input));
             case "Form/query pretty-print" -> PayloadTranscoderStructured.formDataPrettyPrint(input);
             case "Form/query rebuild" -> PayloadTranscoderStructured.formDataRebuild(input);
             case "Multipart pretty-print" -> {
@@ -758,6 +760,11 @@ public class PayloadTranscoderTab extends JPanel {
             case "Encode CBOR" -> PayloadTranscoderBinary.encodeCbor(input);
             case "Encode BSON" -> PayloadTranscoderBinary.encodeBson(input);
             case "Encode gRPC frame" -> PayloadTranscoderGrpc.buildGrpcFrame(input);
+            case "Encode protobuf from JSON" -> PayloadTranscoderGrpc.jsonToProtobuf(input);
+            case "Encode gRPC-Web from JSON" -> {
+                byte[] protobuf = PayloadTranscoderGrpc.jsonToProtobuf(input);
+                yield protobuf != null ? PayloadTranscoderGrpc.buildGrpcFrame(protobuf) : null;
+            }
             case "JSON pretty-print" -> PayloadTranscoderStructured.jsonPrettyPrint(input);
             case "JSON minify" -> PayloadTranscoderStructured.jsonMinify(input);
             case "GraphQL pretty-print" -> PayloadTranscoderProtocol.graphqlPrettyPrint(input);
