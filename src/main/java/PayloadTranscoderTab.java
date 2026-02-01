@@ -42,7 +42,7 @@ public class PayloadTranscoderTab extends JPanel {
     private final JTextArea batchOutputArea;
     private final JCheckBox smartDecodeCheckbox;
     private byte[] lastInputBeforeTranscode;
-    private String lastSmartDecodeOperation;
+    private final List<String> smartDecodeChain = new ArrayList<>();
 
     private static final String[] OPERATIONS = {
             "Decode Base64",
@@ -1010,13 +1010,17 @@ public class PayloadTranscoderTab extends JPanel {
     private void runSmartDecode() {
         byte[] input = inputEditor.getContents().getBytes();
         if (input == null || input.length == 0) return;
-        lastSmartDecodeOperation = null;
+        smartDecodeChain.clear();
         byte[] result = smartDecode(input, 0, 5);
         if (result != null && result.length > 0) {
             outputEditor.setContents(ByteArray.byteArray(result));
             updateStats(result);
-            if (lastSmartDecodeOperation != null) {
-                formatCombo.setSelectedItem(lastSmartDecodeOperation);
+            if (!smartDecodeChain.isEmpty()) {
+                formatCombo.setSelectedItem(smartDecodeChain.get(0));
+                chainModel.clear();
+                for (String op : smartDecodeChain) {
+                    chainModel.addElement(op);
+                }
             }
         }
     }
@@ -1045,7 +1049,7 @@ public class PayloadTranscoderTab extends JPanel {
         if (s == null || s.operation.startsWith("---")) return input;
         byte[] result = performOperation(input, s.operation);
         if (result != null && result.length > 0 && !java.util.Arrays.equals(input, result)) {
-            lastSmartDecodeOperation = s.operation;
+            smartDecodeChain.add(s.operation);
             byte[] next = smartDecode(result, depth + 1, maxDepth);
             return next != null ? next : result;
         }
