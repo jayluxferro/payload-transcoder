@@ -1,6 +1,7 @@
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Smart detection of likely encodings from payload content.
@@ -8,8 +9,63 @@ import java.util.List;
 public final class PayloadTranscoderDetect {
 
     private static final int DETECT_SAMPLE_LIMIT = 32 * 1024;
+    private static final int GIBBERISH_SAMPLE = 8192;
+    /** Entropy (bits/byte) above this with low printable ratio suggests random/gibberish. */
+    private static final double HIGH_ENTROPY_THRESHOLD = 7.0;
+    /** Printable ratio below this with high entropy → likely false positive decode. */
+    private static final double LOW_PRINTABLE_RATIO = 0.25;
+    /** Operations that decode to binary/text and can produce gibberish on wrong input. */
+    private static final Set<String> TEXT_DECODE_OPS = Set.of(
+            "Decode Base64", "Decode Base64 URL-safe", "Decode Hex", "Decode URL",
+            "Decode HTML entities", "Decode Unicode escapes", "Decode Quoted-printable");
 
     private PayloadTranscoderDetect() {}
+
+    /**
+     * Returns true if the decoded result is likely a false positive (gibberish), so smart decode
+     * should not apply this step. Uses entropy and printable ratio; allows results that look like
+     * known structure (gzip, zstd, JSON, XML).
+     */
+    public static boolean isLikelyGibberish(byte[] result, String operation) {
+        if (result == null || result.length == 0 || !TEXT_DECODE_OPS.contains(operation)) return false;
+        if (result.length < 8) return false;
+        if (hasKnownStructure(result)) return false;
+        int sample = Math.min(result.length, GIBBERISH_SAMPLE);
+        double entropy = byteEntropy(result, sample);
+        double printable = printableRatio(result, sample);
+        return entropy >= HIGH_ENTROPY_THRESHOLD && printable < LOW_PRINTABLE_RATIO;
+    }
+
+    private static boolean hasKnownStructure(byte[] data) {
+        if (data.length >= 2 && (data[0] & 0xff) == 0x1f && (data[1] & 0xff) == 0x8b) return true;
+        if (PayloadTranscoderCompression.looksLikeZstd(data)) return true;
+        if (data.length >= 1) {
+            int b = data[0] & 0xff;
+            if (b == '{' || b == '[' || b == '<') return true;
+        }
+        return false;
+    }
+
+    private static double byteEntropy(byte[] data, int len) {
+        int[] count = new int[256];
+        for (int i = 0; i < len; i++) count[data[i] & 0xff]++;
+        double entropy = 0;
+        for (int c : count) {
+            if (c == 0) continue;
+            double p = (double) c / len;
+            entropy -= p * (Math.log(p) / Math.log(2));
+        }
+        return entropy;
+    }
+
+    private static double printableRatio(byte[] data, int len) {
+        int printable = 0;
+        for (int i = 0; i < len; i++) {
+            int b = data[i] & 0xff;
+            if (b >= 0x20 && b <= 0x7E || b == '\n' || b == '\r' || b == '\t') printable++;
+        }
+        return (double) printable / len;
+    }
 
     public static class Suggestion {
         public final String operation;

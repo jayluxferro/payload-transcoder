@@ -1053,6 +1053,7 @@ public class PayloadTranscoderTab extends JPanel {
         if (s == null || s.operation.startsWith("---")) return input;
         byte[] result = performOperation(input, s.operation);
         if (result != null && result.length > 0 && !java.util.Arrays.equals(input, result)) {
+            if (PayloadTranscoderDetect.isLikelyGibberish(result, s.operation)) return input;
             smartDecodeChain.add(s.operation);
             byte[] next = smartDecode(result, depth + 1, maxDepth);
             return next != null ? next : result;
