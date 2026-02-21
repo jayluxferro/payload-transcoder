@@ -1,13 +1,14 @@
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.Inflater;
 import java.util.zip.Deflater;
 
 /**
- * Compression transcoding: gzip, deflate (zlib), Brotli.
+ * Compression transcoding: gzip, deflate (zlib), Brotli, Zstandard (zstd).
  */
 public final class PayloadTranscoderCompression {
 
@@ -180,5 +181,89 @@ public final class PayloadTranscoderCompression {
         // Brotli stream starts with window size bits - hard to detect reliably
         // Just allow attempt when Brotli is available
         return raw.length >= 2;
+    }
+
+    // --- Zstandard (zstd) ---
+
+    private static final boolean ZSTD_AVAILABLE = checkZstdAvailable();
+
+    private static boolean checkZstdAvailable() {
+        try {
+            Class.forName("com.github.luben.zstd.Zstd");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    public static boolean isZstdAvailable() {
+        return ZSTD_AVAILABLE;
+    }
+
+    private static final byte[] ZSTD_MAGIC = {(byte) 0x28, (byte) 0xB5, (byte) 0x2F, (byte) 0xFD};
+
+    /** Zstd frame magic: 0x28 0xB5 0x2F 0xFD. Checks from start or within first 32 bytes (e.g. after CRLF CRLF). */
+    public static boolean looksLikeZstd(byte[] raw) {
+        return indexOfZstdMagic(raw) >= 0;
+    }
+
+    /** Returns offset of zstd magic in raw, or -1 if not found. Searches first 32 bytes. */
+    private static int indexOfZstdMagic(byte[] raw) {
+        if (raw == null || raw.length < 4) return -1;
+        int limit = Math.min(raw.length - 4, 32);
+        for (int i = 0; i <= limit; i++) {
+            if (raw[i] == ZSTD_MAGIC[0] && raw[i + 1] == ZSTD_MAGIC[1]
+                    && raw[i + 2] == ZSTD_MAGIC[2] && raw[i + 3] == ZSTD_MAGIC[3]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static byte[] decodeZstd(byte[] raw) {
+        if (!ZSTD_AVAILABLE || raw == null || raw.length == 0) return null;
+        int offset = indexOfZstdMagic(raw);
+        if (offset < 0) return null;
+        int srcLen = raw.length - offset;
+        try {
+            long size = com.github.luben.zstd.Zstd.decompressedSize(raw, offset, srcLen);
+            if (size > 0 && size <= 512 * 1024 * 1024) {
+                byte[] dst = new byte[(int) size];
+                long n = com.github.luben.zstd.Zstd.decompressByteArray(dst, 0, (int) size, raw, offset, srcLen);
+                if (!com.github.luben.zstd.Zstd.isError(n) && n > 0) return Arrays.copyOf(dst, (int) n);
+            }
+            // Frame may not store content size, or there may be trailing bytes; try with max buffer (16MB)
+            int maxOut = 16 * 1024 * 1024;
+            byte[] dst = new byte[maxOut];
+            for (int tryLen = srcLen; tryLen >= srcLen - 256 && tryLen > 0; tryLen--) {
+                try {
+                    long n = com.github.luben.zstd.Zstd.decompressByteArray(dst, 0, maxOut, raw, offset, tryLen);
+                    if (!com.github.luben.zstd.Zstd.isError(n) && n > 0 && n <= maxOut) return Arrays.copyOf(dst, (int) n);
+                } catch (Exception ignored) {
+                    // e.g. checksum mismatch when trailing bytes included; try shorter length
+                }
+            }
+            return null;
+        } catch (LinkageError e) {
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static byte[] encodeZstd(byte[] bytes) {
+        if (!ZSTD_AVAILABLE || bytes == null) return null;
+        try {
+            long bound = com.github.luben.zstd.Zstd.compressBound(bytes.length);
+            if (bound > Integer.MAX_VALUE) return null;
+            byte[] dst = new byte[(int) bound];
+            long n = com.github.luben.zstd.Zstd.compress(dst, bytes, 3); // level 3 default
+            if (n < 0) return null;
+            return Arrays.copyOf(dst, (int) n);
+        } catch (LinkageError e) {
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

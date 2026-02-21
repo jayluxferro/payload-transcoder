@@ -55,6 +55,7 @@ public class PayloadTranscoderTab extends JPanel {
             "Decode gzip",
             "Decode deflate",
             "Decode Brotli",
+            "Decode zstd",
             "Decode MessagePack",
             "Decode CBOR",
             "Decode BSON",
@@ -106,6 +107,7 @@ public class PayloadTranscoderTab extends JPanel {
             "Encode gzip",
             "Encode deflate",
             "Encode Brotli",
+            "Encode zstd",
             "Encode MessagePack",
             "Encode CBOR",
             "Encode BSON",
@@ -705,6 +707,7 @@ public class PayloadTranscoderTab extends JPanel {
             case "Decode gzip" -> PayloadTranscoderCompression.decodeGzip(input);
             case "Decode deflate" -> PayloadTranscoderCompression.decodeDeflate(input);
             case "Decode Brotli" -> PayloadTranscoderCompression.decodeBrotli(input);
+            case "Decode zstd" -> PayloadTranscoderCompression.decodeZstd(input);
             case "Decode MessagePack" -> PayloadTranscoderBinary.decodeMessagePack(input);
             case "Decode CBOR" -> PayloadTranscoderBinary.decodeCbor(input);
             case "Decode BSON" -> PayloadTranscoderBinary.decodeBson(input);
@@ -756,6 +759,7 @@ public class PayloadTranscoderTab extends JPanel {
             case "Encode gzip" -> PayloadTranscoderCompression.encodeGzip(input);
             case "Encode deflate" -> PayloadTranscoderCompression.encodeDeflate(input);
             case "Encode Brotli" -> PayloadTranscoderCompression.encodeBrotli(input);
+            case "Encode zstd" -> PayloadTranscoderCompression.encodeZstd(input);
             case "Encode MessagePack" -> PayloadTranscoderBinary.encodeMessagePack(input);
             case "Encode CBOR" -> PayloadTranscoderBinary.encodeCbor(input);
             case "Encode BSON" -> PayloadTranscoderBinary.encodeBson(input);

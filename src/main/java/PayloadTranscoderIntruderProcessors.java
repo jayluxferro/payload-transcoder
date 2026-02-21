@@ -29,8 +29,10 @@ public final class PayloadTranscoderIntruderProcessors {
         add(list, montoyaApi, "Unicode escapes encode", in -> toBytes(PayloadTranscoderUtils.encodeUnicodeEscapes(in)));
         add(list, montoyaApi, "gzip decode", PayloadTranscoderCompression::decodeGzip);
         add(list, montoyaApi, "deflate decode", PayloadTranscoderCompression::decodeDeflate);
+        add(list, montoyaApi, "zstd decode", PayloadTranscoderCompression::decodeZstd);
         add(list, montoyaApi, "gzip encode", PayloadTranscoderCompression::encodeGzip);
         add(list, montoyaApi, "deflate encode", PayloadTranscoderCompression::encodeDeflate);
+        add(list, montoyaApi, "zstd encode", PayloadTranscoderCompression::encodeZstd);
         add(list, montoyaApi, "gRPC frame encode", PayloadTranscoderGrpc::buildGrpcFrame);
         add(list, montoyaApi, "JSON pretty-print", PayloadTranscoderStructured::jsonPrettyPrint);
         add(list, montoyaApi, "JSON minify", PayloadTranscoderStructured::jsonMinify);

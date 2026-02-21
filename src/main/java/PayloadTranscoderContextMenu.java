@@ -525,6 +525,13 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
                 hasDecodeItems = true;
             }
         }
+        if (PayloadTranscoderCompression.isZstdAvailable() && PayloadTranscoderCompression.looksLikeZstd(body)) {
+            byte[] decodedZstd = PayloadTranscoderCompression.decodeZstd(body);
+            if (decodedZstd != null && decodedZstd.length > 0) {
+                addDecodeItem(decodeMenu, "zstd", decodedZstd);
+                hasDecodeItems = true;
+            }
+        }
         if (PayloadTranscoderBinary.looksLikeMessagePack(body)) {
             byte[] decodedMsgpack = PayloadTranscoderBinary.decodeMessagePack(body);
             if (decodedMsgpack != null && decodedMsgpack.length > 0) {
@@ -681,6 +688,17 @@ public class PayloadTranscoderContextMenu implements ContextMenuItemsProvider {
                 }
             });
             encodeMenu.add(encodeBrotli);
+        }
+
+        if (PayloadTranscoderCompression.isZstdAvailable()) {
+            JMenuItem encodeZstd = new JMenuItem("zstd");
+            encodeZstd.addActionListener(e -> {
+                byte[] encoded = PayloadTranscoderCompression.encodeZstd(body);
+                if (encoded != null) {
+                    montoyaApi.decoder().sendToDecoder(ByteArray.byteArray(encoded));
+                }
+            });
+            encodeMenu.add(encodeZstd);
         }
 
         JMenuItem encodeMsgpack = new JMenuItem("MessagePack");

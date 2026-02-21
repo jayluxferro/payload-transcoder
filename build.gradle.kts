@@ -15,6 +15,7 @@ dependencies {
     implementation("org.msgpack:jackson-dataformat-msgpack:0.9.9")
     implementation("org.mongodb:bson:4.11.1")
     implementation("com.aayushatharva.brotli4j:brotli4j:1.20.0")
+    implementation("com.github.luben:zstd-jni:1.5.5-11")
     implementation("com.google.protobuf:protobuf-java:4.29.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

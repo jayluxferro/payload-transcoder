@@ -32,6 +32,9 @@ public final class PayloadTranscoderDetect {
         if (input.length >= 2 && (input[0] & 0xff) == 0x1f && (input[1] & 0xff) == 0x8b) {
             return new Suggestion("Decode gzip", "gzip magic bytes (1f 8b)");
         }
+        if (input.length >= 4 && PayloadTranscoderCompression.looksLikeZstd(input)) {
+            return new Suggestion("Decode zstd", "zstd magic bytes (28 b5 2f fd)");
+        }
         if (PayloadTranscoderGrpc.looksLikeGrpcBytes(input)) {
             return new Suggestion("Decode gRPC-Web (JSON)", "Looks like gRPC/gRPC-Web framing");
         }
@@ -190,6 +193,11 @@ public final class PayloadTranscoderDetect {
         // gzip magic
         if (input.length >= 2 && (input[0] & 0xff) == 0x1f && (input[1] & 0xff) == 0x8b) {
             out.add(new Suggestion("Decode gzip", "gzip magic bytes (1f 8b)"));
+        }
+
+        // zstd magic
+        if (PayloadTranscoderCompression.looksLikeZstd(input)) {
+            out.add(new Suggestion("Decode zstd", "zstd magic bytes (28 b5 2f fd)"));
         }
 
         // GraphQL
